@@ -1076,6 +1076,9 @@ pub(crate) async fn analyse_ecmascript_module_internal(
                 )
                 .await?;
             }
+            Effect::Worker { .. } => {
+                // TODO: perform worker replacement
+            }
             Effect::MemberCall {
                 obj,
                 prop,
