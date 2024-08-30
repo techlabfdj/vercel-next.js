@@ -29,6 +29,7 @@ import {
   INSTRUMENTATION_HOOK_FILENAME,
   RSC_PREFETCH_SUFFIX,
   RSC_SUFFIX,
+  NEXT_RESUME_HEADER,
 } from '../lib/constants'
 import { FileType, fileExists } from '../lib/file-exists'
 import { findPagesDir } from '../lib/find-pages-dir'
@@ -205,36 +206,51 @@ import { storeShuttle } from './flying-shuttle/store-shuttle'
 import { stitchBuilds } from './flying-shuttle/stitch-builds'
 import { inlineStaticEnv } from './flying-shuttle/inline-static-env'
 import { FallbackMode, fallbackModeToFallbackField } from '../lib/fallback'
-
-interface ExperimentalBypassForInfo {
-  experimentalBypassFor?: RouteHas[]
-}
-
-interface ExperimentalPPRInfo {
-  experimentalPPR: boolean | undefined
-}
-
-interface DataRouteRouteInfo {
-  dataRoute: string | null
-  prefetchDataRoute: string | null | undefined
-}
+import { RenderingMode } from './rendering-mode'
 
 type Fallback = null | boolean | string
 
-export interface SsgRoute
-  extends ExperimentalBypassForInfo,
-    DataRouteRouteInfo,
-    ExperimentalPPRInfo {
-  initialRevalidateSeconds: Revalidate
-  srcRoute: string | null
-  initialStatus?: number
+export interface SsgRoute {
+  dataRoute: string | null
+  experimentalBypassFor?: RouteHas[]
+
+  /**
+   * The headers that should be served along side this prerendered route.
+   */
   initialHeaders?: Record<string, string>
+
+  /**
+   * The status code that should be served along side this prerendered route.
+   */
+  initialStatus?: number
+
+  /**
+   * The revalidation configuration for this route.
+   */
+  initialRevalidateSeconds: Revalidate
+
+  /**
+   * The prefetch data route associated with this page. If not defined, this
+   * page does not support prefetching.
+   */
+  prefetchDataRoute: string | null | undefined
+
+  /**
+   * The dynamic route that this statically prerendered route is based on. If
+   * this is null, then the route was not based on a dynamic route.
+   */
+  srcRoute: string | null
+
+  /**
+   * The rendering mode for this route.
+   */
+  renderingMode: RenderingMode
 }
 
-export interface DynamicSsgRoute
-  extends ExperimentalBypassForInfo,
-    DataRouteRouteInfo,
-    ExperimentalPPRInfo {
+export interface DynamicSsgRoute {
+  dataRoute: string | null
+  dataRouteRegex: string | null
+  experimentalBypassFor?: RouteHas[]
   fallback: Fallback
 
   /**
@@ -242,12 +258,24 @@ export interface DynamicSsgRoute
    * route.
    */
   fallbackRevalidate: Revalidate | undefined
-  fallbackStatus?: number
+
+  /**
+   * The headers that should used when serving the fallback.
+   */
   fallbackHeaders?: Record<string, string>
 
-  routeRegex: string
-  dataRouteRegex: string | null
+  /**
+   * The status code that should be used when serving the fallback.
+   */
+  fallbackStatus?: number
+  prefetchDataRoute: string | null | undefined
   prefetchDataRouteRegex: string | null | undefined
+  routeRegex: string
+
+  /**
+   * The rendering mode for this route.
+   */
+  renderingMode: RenderingMode
 }
 
 export type PrerenderManifest = {
@@ -312,6 +340,7 @@ export type RoutesManifest = {
   rsc: {
     header: typeof RSC_HEADER
     didPostponeHeader: typeof NEXT_DID_POSTPONE_HEADER
+    contentTypeHeader: typeof RSC_CONTENT_TYPE_HEADER
     varyHeader: string
     prefetchHeader: typeof NEXT_ROUTER_PREFETCH_HEADER
     suffix: typeof RSC_SUFFIX
@@ -319,6 +348,21 @@ export type RoutesManifest = {
   }
   skipMiddlewareUrlNormalize?: boolean
   caseSensitive?: boolean
+  /**
+   * Configuration related to Partial Prerendering.
+   */
+  ppr?: {
+    /**
+     * The chained response for the PPR resume.
+     */
+    chain: {
+      /**
+       * The headers that will indicate to Next.js that the request is for a PPR
+       * resume.
+       */
+      headers: Record<string, string>
+    }
+  }
 }
 
 function pageToRoute(page: string) {
@@ -1143,7 +1187,14 @@ export default async function build(
               prefetchSuffix: RSC_PREFETCH_SUFFIX,
             },
             skipMiddlewareUrlNormalize: config.skipMiddlewareUrlNormalize,
-          } as RoutesManifest
+            ppr: {
+              chain: {
+                headers: {
+                  [NEXT_RESUME_HEADER]: '1',
+                },
+              },
+            },
+          } satisfies RoutesManifest
         })
 
       if (rewrites.beforeFiles.length === 0 && rewrites.fallback.length === 0) {
@@ -2942,7 +2993,9 @@ export default async function build(
                 prerenderManifest.routes[route] = {
                   initialStatus: meta.status,
                   initialHeaders: meta.headers,
-                  experimentalPPR: isRoutePPREnabled,
+                  renderingMode: isRoutePPREnabled
+                    ? RenderingMode.PARTIALLY_STATIC
+                    : RenderingMode.STATIC,
                   experimentalBypassFor: bypassFor,
                   initialRevalidateSeconds: revalidate,
                   srcRoute: page,
@@ -3019,7 +3072,9 @@ export default async function build(
                     : {}
 
                 prerenderManifest.dynamicRoutes[route] = {
-                  experimentalPPR: isRoutePPREnabled,
+                  renderingMode: isRoutePPREnabled
+                    ? RenderingMode.PARTIALLY_STATIC
+                    : RenderingMode.STATIC,
                   experimentalBypassFor: bypassFor,
                   routeRegex: normalizeRouteRegex(
                     getNamedRouteRegex(route, false).re.source
@@ -3271,7 +3326,7 @@ export default async function build(
                       initialRevalidateSeconds:
                         exportResult.byPath.get(localePage)?.revalidate ??
                         false,
-                      experimentalPPR: undefined,
+                      renderingMode: RenderingMode.STATIC,
                       srcRoute: null,
                       dataRoute: path.posix.join(
                         '/_next/data',
@@ -3285,7 +3340,7 @@ export default async function build(
                   prerenderManifest.routes[page] = {
                     initialRevalidateSeconds:
                       exportResult.byPath.get(page)?.revalidate ?? false,
-                    experimentalPPR: undefined,
+                    renderingMode: RenderingMode.STATIC,
                     srcRoute: null,
                     dataRoute: path.posix.join(
                       '/_next/data',
@@ -3354,7 +3409,7 @@ export default async function build(
 
                   prerenderManifest.routes[route.path] = {
                     initialRevalidateSeconds,
-                    experimentalPPR: undefined,
+                    renderingMode: RenderingMode.STATIC,
                     srcRoute: page,
                     dataRoute: path.posix.join(
                       '/_next/data',
@@ -3440,7 +3495,7 @@ export default async function build(
             routeRegex: normalizeRouteRegex(
               getNamedRouteRegex(tbdRoute, false).re.source
             ),
-            experimentalPPR: undefined,
+            renderingMode: RenderingMode.STATIC,
             dataRoute,
             fallback: ssgBlockingFallbackPages.has(tbdRoute)
               ? null
