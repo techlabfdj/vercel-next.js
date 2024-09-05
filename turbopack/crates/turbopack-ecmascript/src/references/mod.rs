@@ -124,7 +124,7 @@ use crate::{
         imports::{ImportAnnotations, ImportedSymbol, Reexport},
         parse_require_context,
         top_level_await::has_top_level_await,
-        ConstantNumber, ConstantString, RequireContextValue,
+        ConstantNumber, ConstantString, JsValueUrlKind, RequireContextValue,
     },
     chunk::EcmascriptExports,
     code_gen::{CodeGen, CodeGenerateable, CodeGenerateableWithAsyncModuleInfo, CodeGenerateables},
@@ -1277,7 +1277,7 @@ async fn handle_worker(
         source,
         ..
     } = state;
-    if let JsValue::RelUrl(url) = url {
+    if let JsValue::Url(url, JsValueUrlKind::Relative) = url {
         let pat = Pattern::Constant(url.as_str().into());
         analysis.add_reference(WorkerAssetReference::new(
             origin,
