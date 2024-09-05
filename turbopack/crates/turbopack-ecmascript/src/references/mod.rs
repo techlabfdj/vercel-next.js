@@ -60,6 +60,7 @@ use turbopack_core::{
     compile_time_info::{
         CompileTimeInfo, DefineableNameSegment, FreeVarReference, FreeVarReferences,
     },
+    environment::Rendering,
     error::PrettyPrintError,
     issue::{analyze::AnalyzeIssue, IssueExt, IssueSeverity, IssueSource, StyledString},
     module::Module,
@@ -1064,7 +1065,10 @@ pub(crate) async fn analyse_ecmascript_module_internal(
                         continue;
                     }
                 }
-                handle_worker(&ast_path, span, url, &analysis_state, &mut analysis, in_try).await?;
+                if *compile_time_info.environment().rendering().await? == Rendering::Client {
+                    handle_worker(&ast_path, span, url, &analysis_state, &mut analysis, in_try)
+                        .await?;
+                }
             }
             Effect::Call {
                 func,
