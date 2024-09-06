@@ -367,7 +367,6 @@ struct AnalysisState<'a> {
 impl<'a> AnalysisState<'a> {
     /// Links a value to the graph, returning the linked value.
     ///
-    /// * `in_try` is true if the value is in a try block.
     /// * `ignore` is true if the value is ignored. This is perhaps the case when the webpackIgnore
     ///   or turbopackIgnore directives are present.
     async fn link_value(&self, value: JsValue, ignore: bool) -> Result<JsValue> {
@@ -1354,6 +1353,9 @@ async fn handle_call<G: Fn(Vec<Effect>) + Send + Sync>(
         }
         JsValue::WellKnownFunction(WellKnownFunctionKind::Import { ignore }) => {
             let args = linked_args(args).await?;
+            if ignore {
+                return Ok(());
+            }
             if args.len() == 1 {
                 let pat = js_value_to_pattern(&args[0]);
                 if !pat.has_constant_parts() {
@@ -1379,7 +1381,6 @@ async fn handle_call<G: Fn(Vec<Effect>) + Send + Sync>(
                     issue_source(source, span),
                     in_try,
                     state.import_externals,
-                    ignore,
                 ));
                 return Ok(());
             }
@@ -1394,6 +1395,9 @@ async fn handle_call<G: Fn(Vec<Effect>) + Send + Sync>(
         }
         JsValue::WellKnownFunction(WellKnownFunctionKind::Require { ignore }) => {
             let args = linked_args(args).await?;
+            if ignore {
+                return Ok(());
+            }
             if args.len() == 1 {
                 let pat = js_value_to_pattern(&args[0]);
                 if !pat.has_constant_parts() {
@@ -1416,7 +1420,6 @@ async fn handle_call<G: Fn(Vec<Effect>) + Send + Sync>(
                     Vc::cell(ast_path.to_vec()),
                     issue_source(source, span),
                     in_try,
-                    ignore,
                 ));
                 return Ok(());
             }
@@ -1464,7 +1467,6 @@ async fn handle_call<G: Fn(Vec<Effect>) + Send + Sync>(
                     Vc::cell(ast_path.to_vec()),
                     issue_source(source, span),
                     in_try,
-                    false,
                 ));
                 return Ok(());
             }
@@ -2452,15 +2454,9 @@ async fn require_resolve_visitor(
     Ok(if args.len() == 1 {
         let pat = js_value_to_pattern(&args[0]);
         let request = Request::parse(Value::new(pat.clone()));
-        let resolved = cjs_resolve(
-            origin,
-            request,
-            None,
-            IssueSeverity::Warning.cell(),
-            /* ignore */ false,
-        )
-        .resolve()
-        .await?;
+        let resolved = cjs_resolve(origin, request, None, IssueSeverity::Warning.cell())
+            .resolve()
+            .await?;
         let mut values = resolved
             .primary_modules()
             .await?
