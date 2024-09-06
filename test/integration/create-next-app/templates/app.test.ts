@@ -147,4 +147,44 @@ describe('create-next-app --app (App Router)', () => {
       })
     })
   })
+
+  const reproName = 'unknown-repro-69748'
+  it(`should create ${reproName} project`, async () => {
+    await useTempDir(async (cwd) => {
+      const projectName = reproName
+      const childProcess = createNextApp(
+        [
+          projectName,
+          '--ts',
+          '--app',
+          '--eslint',
+          '--src-dir',
+          '--tailwind',
+          // '--no-import-alias', // WORKS
+          '--import-alias=@acme/*', // breaks
+          // '--turbo', // no effect
+          // '--use-pnpm', // no effect
+        ],
+        {
+          cwd,
+          stdio: 'inherit',
+        },
+        testVersion
+      )
+
+      const exitCode = await spawnExitPromise(childProcess)
+      expect(exitCode).toBe(0)
+      shouldBeTemplateProject({
+        cwd,
+        projectName,
+        template: 'app-tw',
+        mode: 'ts',
+        srcDir: true,
+      })
+      await tryNextDev({
+        cwd,
+        projectName,
+      })
+    })
+  })
 })
