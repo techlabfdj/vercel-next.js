@@ -1285,7 +1285,6 @@ async fn handle_worker(
             Vc::cell(ast_path.to_vec()),
             issue_source(source, span),
             in_try,
-            state.import_externals,
         ));
         return Ok(());
     }
