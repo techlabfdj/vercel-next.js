@@ -90,21 +90,8 @@ function getExistingCacheEntry(
       ? cacheKeyWithParams
       : cacheKeyWithoutParams
 
-    const existingEntry = prefetchCache.get(cacheKeyToUse)
-    if (existingEntry) {
-      // We know we're returning an aliased entry when the pathname matches but the search params don't,
-      const isAliased =
-        existingEntry.url.pathname === url.pathname &&
-        existingEntry.url.search !== url.search
-
-      if (isAliased) {
-        return {
-          ...existingEntry,
-          aliased: true,
-        }
-      }
-
-      return existingEntry
+    if (prefetchCache.has(cacheKeyToUse)) {
+      return prefetchCache.get(cacheKeyToUse)
     }
 
     // If the request contains search params, and we're not doing a full prefetch, we can return the

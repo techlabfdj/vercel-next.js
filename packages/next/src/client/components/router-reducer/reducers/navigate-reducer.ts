@@ -182,14 +182,12 @@ export function navigateReducer(
         // TODO-APP: remove ''
         const flightSegmentPathWithLeadingEmpty = ['', ...flightSegmentPath]
 
-        // Segments are keyed by searchParams (e.g. __PAGE__?{"foo":"bar"}), so if we returned an aliased entry,
-        // we need to ensure the correct searchParams are provided in the updated FlightRouterState tree.
-        if (prefetchValues.aliased) {
-          treePatch[0] = addSearchParamsIfPageSegment(
-            treePatch[0],
-            Object.fromEntries(url.searchParams)
-          )
-        }
+        // Segments are keyed by searchParams (e.g. __PAGE__?{"foo":"bar"}). We might return a less specific, param-less entry,
+        // so we ensure that the final tree contains the correct searchParams (reflected in the URL) are provided in the updated FlightRouterState tree.
+        treePatch[0] = addSearchParamsIfPageSegment(
+          treePatch[0],
+          Object.fromEntries(url.searchParams)
+        )
 
         // Create new tree based on the flightSegmentPath and router state patch
         let newTree = applyRouterStatePatchToTree(
