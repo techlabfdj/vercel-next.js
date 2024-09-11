@@ -659,7 +659,6 @@ impl PageEndpoint {
                 return Ok(Vc::upcast(HmrEntryModule::new(
                     AssetIdent::from_path(this.page.await?.base_path),
                     chunkable,
-                    true,
                 )));
             }
         }
