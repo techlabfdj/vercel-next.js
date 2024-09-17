@@ -5,7 +5,7 @@ use turbo_tasks::{
     graph::{AdjacencyMap, GraphTraversal},
     RcStr, TryJoinIterExt, ValueToString, Vc,
 };
-use turbo_tasks_hash::hash_xxh3_hash64;
+use turbo_tasks_hash::{hash_xxh3_hash64, DeterministicHash, Xxh3Hash64Hasher};
 use turbopack_core::{
     chunk::ModuleId,
     module::{Module, Modules},
@@ -164,58 +164,46 @@ pub async fn children_modules_idents(
     Ok(PreprocessedChildrenIdents { modules_idents }.cell())
 }
 
+const JS_MAX_SAFE_INTEGER: u64 = (1u64 << 53) - 1;
+
 // Note(LichuAcu): This could be split into two functions: one that merges the preprocessed module
 // ids and another that generates the final, optimized module ids. Thoughts?
 pub async fn merge_preprocessed_module_ids(
     preprocessed_module_ids: Vec<Vc<PreprocessedChildrenIdents>>,
 ) -> Result<HashMap<RcStr, Vc<ModuleId>>> {
-    let mut module_id_map: HashMap<RcStr, Vc<ModuleId>> = HashMap::new();
-    let mut used_ids: HashSet<u64> = HashSet::new();
+    let mut merged_module_ids = HashMap::new();
 
     for preprocessed_module_ids in preprocessed_module_ids {
         for (module_ident, full_hash) in preprocessed_module_ids.await?.modules_idents.iter() {
-            process_module(
-                module_ident.clone(),
-                *full_hash,
-                &mut module_id_map,
-                &mut used_ids,
-            )
-            .await?;
+            merged_module_ids.insert(module_ident.clone(), *full_hash);
         }
+    }
+
+    // 5% fill rate, as done in Webpack
+    // https://github.com/webpack/webpack/blob/27cf3e59f5f289dfc4d76b7a1df2edbc4e651589/lib/ids/IdHelpers.js#L366-L405
+    let optimal_range = merged_module_ids.len() * 20;
+    let power = std::cmp::min(
+        10u64.pow((optimal_range as f64).log10().ceil() as u32),
+        JS_MAX_SAFE_INTEGER,
+    );
+
+    let mut module_id_map: HashMap<RcStr, Vc<ModuleId>> = HashMap::new();
+    let mut used_ids: HashSet<u64> = HashSet::new();
+
+    for (module_ident, full_hash) in merged_module_ids.iter() {
+        let mut trimmed_hash = full_hash % power;
+        let mut i = 0;
+        while used_ids.contains(&trimmed_hash) {
+            let mut hasher = Xxh3Hash64Hasher::new();
+            module_ident.deterministic_hash(&mut hasher);
+            i.deterministic_hash(&mut hasher);
+            let full_hash = hasher.finish();
+            trimmed_hash = full_hash % power;
+            i += 1;
+        }
+        used_ids.insert(trimmed_hash);
+        module_id_map.insert(module_ident.clone(), ModuleId::Number(trimmed_hash).cell());
     }
 
     Ok(module_id_map)
-}
-
-pub async fn process_module(
-    ident_str: RcStr,
-    full_hash: u64,
-    id_map: &mut HashMap<RcStr, Vc<ModuleId>>,
-    used_ids: &mut HashSet<u64>,
-) -> Result<()> {
-    if id_map.contains_key(&ident_str) {
-        return Ok(());
-    }
-
-    let mut trimmed_hash = full_hash % 10;
-    let mut power = 10;
-    while used_ids.contains(&trimmed_hash) {
-        if power >= u64::MAX / 10 {
-            // We don't want to take the next power as it would overflow
-            if used_ids.contains(&full_hash) {
-                return Err(anyhow::anyhow!("This is a... 64-bit hash collision?"));
-            }
-            trimmed_hash = full_hash;
-            break;
-        }
-        power *= 10;
-        trimmed_hash = full_hash % power;
-    }
-
-    let hashed_module_id = ModuleId::Number(trimmed_hash);
-
-    id_map.insert(ident_str, hashed_module_id.cell());
-    used_ids.insert(trimmed_hash);
-
-    Ok(())
 }
