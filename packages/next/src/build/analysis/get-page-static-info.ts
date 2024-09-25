@@ -19,6 +19,7 @@ import { isEdgeRuntime } from '../../lib/is-edge-runtime'
 import { RSC_MODULE_TYPES } from '../../shared/lib/constants'
 import type { RSCMeta } from '../webpack/loaders/get-module-build-info'
 import { PAGE_TYPES } from '../../lib/page-types'
+import { AppSegmentConfigSchemaKeys } from '../app-segments/app-segment-config'
 
 // TODO: migrate preferredRegion here
 // Don't forget to update the next-types-plugin file as well
@@ -503,180 +504,202 @@ export async function getPageStaticInfo(params: {
 }): Promise<PageStaticInfo> {
   const { isDev, pageFilePath, nextConfig, page, pageType } = params
 
-  const fileContent = (await tryToReadFile(pageFilePath, !isDev)) || ''
+  const fileContent = await tryToReadFile(pageFilePath, !isDev)
+
+  // If there's no file content or the file doesn't contain any of the keywords
+  // that we expect to find, then we should just bail the detection now.
   if (
-    /(?<!(_jsx|jsx-))runtime|preferredRegion|getStaticProps|getServerSideProps|generateStaticParams|export const|generateImageMetadata|generateSitemaps/.test(
+    !fileContent ||
+    !/(?<!(_jsx|jsx-))runtime|preferredRegion|getStaticProps|getServerSideProps|generateStaticParams|export const|generateImageMetadata|generateSitemaps/.test(
       fileContent
     )
   ) {
-    const swcAST = await parseModule(pageFilePath, fileContent)
-    const {
-      ssg,
-      ssr,
-      runtime,
-      preferredRegion,
-      generateStaticParams,
-      generateImageMetadata,
-      generateSitemaps,
-      extraProperties,
-      directives,
-    } = checkExports(swcAST, pageFilePath)
-    const rscInfo = getRSCModuleInformation(fileContent, true)
-    const rsc = rscInfo.type
-
-    // default / failsafe value for config
-    let config: any // TODO: type this as unknown
-    try {
-      config = extractExportedConstValue(swcAST, 'config')
-    } catch (e) {
-      if (e instanceof UnsupportedValueError) {
-        warnAboutUnsupportedValue(pageFilePath, page, e)
-      }
-      // `export config` doesn't exist, or other unknown error thrown by swc, silence them
-    }
-
-    const extraConfig: Record<string, any> = {}
-
-    if (extraProperties && pageType === PAGE_TYPES.APP) {
-      for (const prop of extraProperties) {
-        if (!AUTHORIZED_EXTRA_ROUTER_PROPS.includes(prop)) continue
-        try {
-          extraConfig[prop] = extractExportedConstValue(swcAST, prop)
-        } catch (e) {
-          if (e instanceof UnsupportedValueError) {
-            warnAboutUnsupportedValue(pageFilePath, page, e)
-          }
-        }
-      }
-    } else if (pageType === PAGE_TYPES.PAGES) {
-      for (const key in config) {
-        if (!AUTHORIZED_EXTRA_ROUTER_PROPS.includes(key)) continue
-        extraConfig[key] = config[key]
-      }
-    }
-
-    if (pageType === PAGE_TYPES.APP) {
-      if (config) {
-        let message = `Page config in ${pageFilePath} is deprecated. Replace \`export const config=…\` with the following:`
-
-        if (config.runtime) {
-          message += `\n  - \`export const runtime = ${JSON.stringify(
-            config.runtime
-          )}\``
-        }
-
-        if (config.regions) {
-          message += `\n  - \`export const preferredRegion = ${JSON.stringify(
-            config.regions
-          )}\``
-        }
-
-        message += `\nVisit https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config for more information.`
-
-        if (isDev) {
-          Log.warnOnce(message)
-        } else {
-          throw new Error(message)
-        }
-        config = {}
-      }
-    }
-    if (!config) config = {}
-
-    // We use `export const config = { runtime: '...' }` to specify the page runtime for pages/.
-    // In the new app directory, we prefer to use `export const runtime = '...'`
-    // and deprecate the old way. To prevent breaking changes for `pages`, we use the exported config
-    // as the fallback value.
-    let resolvedRuntime
-    if (pageType === PAGE_TYPES.APP) {
-      resolvedRuntime = runtime
-    } else {
-      resolvedRuntime = runtime || config.runtime
-    }
-
-    if (
-      typeof resolvedRuntime !== 'undefined' &&
-      resolvedRuntime !== SERVER_RUNTIME.nodejs &&
-      !isEdgeRuntime(resolvedRuntime)
-    ) {
-      const options = Object.values(SERVER_RUNTIME).join(', ')
-      const message =
-        typeof resolvedRuntime !== 'string'
-          ? `The \`runtime\` config must be a string. Please leave it empty or choose one of: ${options}`
-          : `Provided runtime "${resolvedRuntime}" is not supported. Please leave it empty or choose one of: ${options}`
-      if (isDev) {
-        Log.error(message)
-      } else {
-        throw new Error(message)
-      }
-    }
-
-    const requiresServerRuntime = ssr || ssg || pageType === PAGE_TYPES.APP
-
-    const isAnAPIRoute = isAPIRoute(page?.replace(/^(?:\/src)?\/pages\//, '/'))
-
-    resolvedRuntime =
-      isEdgeRuntime(resolvedRuntime) || requiresServerRuntime
-        ? resolvedRuntime
-        : undefined
-
-    if (resolvedRuntime === SERVER_RUNTIME.experimentalEdge) {
-      warnAboutExperimentalEdge(isAnAPIRoute ? page! : null)
-    }
-
-    if (
-      resolvedRuntime === SERVER_RUNTIME.edge &&
-      pageType === PAGE_TYPES.PAGES &&
-      page &&
-      !isAnAPIRoute
-    ) {
-      const message = `Page ${page} provided runtime 'edge', the edge runtime for rendering is currently experimental. Use runtime 'experimental-edge' instead.`
-      if (isDev) {
-        Log.error(message)
-      } else {
-        throw new Error(message)
-      }
-    }
-
-    const middlewareConfig = getMiddlewareConfig(
-      page ?? 'middleware/edge API route',
-      config,
-      nextConfig
-    )
-
-    if (
-      pageType === PAGE_TYPES.APP &&
-      directives?.has('client') &&
-      generateStaticParams
-    ) {
-      throw new Error(
-        `Page "${page}" cannot use both "use client" and export function "generateStaticParams()".`
-      )
-    }
-
     return {
-      ssr,
-      ssg,
-      rsc,
-      generateStaticParams,
-      generateImageMetadata,
-      generateSitemaps,
-      amp: config.amp || false,
-      ...(middlewareConfig && { middleware: middlewareConfig }),
-      ...(resolvedRuntime && { runtime: resolvedRuntime }),
-      preferredRegion,
-      extraConfig,
+      ssr: false,
+      ssg: false,
+      rsc: RSC_MODULE_TYPES.server,
+      generateStaticParams: false,
+      generateImageMetadata: false,
+      generateSitemaps: false,
+      amp: false,
+      runtime: undefined,
+    }
+  }
+
+  const swcAST = await parseModule(pageFilePath, fileContent)
+
+  const {
+    ssg,
+    ssr,
+    runtime,
+    preferredRegion,
+    generateStaticParams,
+    generateImageMetadata,
+    generateSitemaps,
+    extraProperties,
+    directives,
+  } = checkExports(swcAST, pageFilePath)
+
+  const rscInfo = getRSCModuleInformation(fileContent, true)
+  const rsc = rscInfo.type
+
+  // default / failsafe value for config
+  let config: any // TODO: type this as unknown
+  try {
+    config = extractExportedConstValue(swcAST, 'config')
+  } catch (e) {
+    if (e instanceof UnsupportedValueError) {
+      warnAboutUnsupportedValue(pageFilePath, page, e)
+    }
+    // `export config` doesn't exist, or other unknown error thrown by swc, silence them
+  }
+
+  const extraConfig: Record<string, any> = {}
+
+  if (extraProperties && pageType === PAGE_TYPES.APP) {
+    for (const prop of extraProperties) {
+      if (!AUTHORIZED_EXTRA_ROUTER_PROPS.includes(prop)) continue
+      try {
+        extraConfig[prop] = extractExportedConstValue(swcAST, prop)
+      } catch (e) {
+        if (e instanceof UnsupportedValueError) {
+          warnAboutUnsupportedValue(pageFilePath, page, e)
+        }
+      }
+    }
+  } else if (pageType === PAGE_TYPES.PAGES) {
+    for (const key in config) {
+      if (!AUTHORIZED_EXTRA_ROUTER_PROPS.includes(key)) continue
+      extraConfig[key] = config[key]
+    }
+  }
+
+  if (pageType === PAGE_TYPES.APP) {
+    if (config) {
+      let message = `Page config in ${pageFilePath} is deprecated. Replace \`export const config=…\` with the following:`
+
+      if (config.runtime) {
+        message += `\n  - \`export const runtime = ${JSON.stringify(
+          config.runtime
+        )}\``
+      }
+
+      if (config.regions) {
+        message += `\n  - \`export const preferredRegion = ${JSON.stringify(
+          config.regions
+        )}\``
+      }
+
+      message += `\nVisit https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config for more information.`
+
+      if (isDev) {
+        Log.warnOnce(message)
+      } else {
+        throw new Error(message)
+      }
+      config = {}
+    }
+  }
+  if (!config) config = {}
+
+  // We use `export const config = { runtime: '...' }` to specify the page runtime for pages/.
+  // In the new app directory, we prefer to use `export const runtime = '...'`
+  // and deprecate the old way. To prevent breaking changes for `pages`, we use the exported config
+  // as the fallback value.
+  let resolvedRuntime
+  if (pageType === PAGE_TYPES.APP) {
+    resolvedRuntime = runtime
+  } else {
+    resolvedRuntime = runtime || config.runtime
+  }
+
+  if (
+    typeof resolvedRuntime !== 'undefined' &&
+    resolvedRuntime !== SERVER_RUNTIME.nodejs &&
+    !isEdgeRuntime(resolvedRuntime)
+  ) {
+    const options = Object.values(SERVER_RUNTIME).join(', ')
+    const message =
+      typeof resolvedRuntime !== 'string'
+        ? `The \`runtime\` config must be a string. Please leave it empty or choose one of: ${options}`
+        : `Provided runtime "${resolvedRuntime}" is not supported. Please leave it empty or choose one of: ${options}`
+    if (isDev) {
+      Log.error(message)
+    } else {
+      throw new Error(message)
+    }
+  }
+
+  const requiresServerRuntime = ssr || ssg || pageType === PAGE_TYPES.APP
+
+  const isAnAPIRoute =
+    pageType === PAGE_TYPES.PAGES &&
+    isAPIRoute(page?.replace(/^(?:\/src)?\/pages\//, '/'))
+
+  resolvedRuntime =
+    isEdgeRuntime(resolvedRuntime) || requiresServerRuntime
+      ? resolvedRuntime
+      : undefined
+
+  if (resolvedRuntime === SERVER_RUNTIME.experimentalEdge) {
+    warnAboutExperimentalEdge(isAnAPIRoute ? page! : null)
+  }
+
+  if (
+    resolvedRuntime === SERVER_RUNTIME.edge &&
+    pageType === PAGE_TYPES.PAGES &&
+    page &&
+    !isAnAPIRoute
+  ) {
+    const message = `Page ${page} provided runtime 'edge', the edge runtime for rendering is currently experimental. Use runtime 'experimental-edge' instead.`
+    if (isDev) {
+      Log.error(message)
+    } else {
+      throw new Error(message)
+    }
+  }
+
+  const middlewareConfig = getMiddlewareConfig(
+    page ?? 'middleware/edge API route',
+    config,
+    nextConfig
+  )
+
+  const isClientComponent = directives ? directives.has('client') : false
+
+  if (pageType === PAGE_TYPES.APP) {
+    if (isClientComponent) {
+      if (generateStaticParams) {
+        throw new Error(
+          `Page "${page}" cannot use both "use client" and export function "generateStaticParams()".`
+        )
+      }
+
+      // Discover if any app configurations are provided on the component. If
+      // any are, we need to error because the configuration is not used.
+      if (extraProperties) {
+        for (const key of AppSegmentConfigSchemaKeys) {
+          if (!extraProperties.has(key)) continue
+
+          throw new Error(
+            `Page "${page}" cannot use both "use client" and export "${key}"`
+          )
+        }
+      }
     }
   }
 
   return {
-    ssr: false,
-    ssg: false,
-    rsc: RSC_MODULE_TYPES.server,
-    generateStaticParams: false,
-    generateImageMetadata: false,
-    generateSitemaps: false,
-    amp: false,
-    runtime: undefined,
+    ssr,
+    ssg,
+    rsc,
+    generateStaticParams,
+    generateImageMetadata,
+    generateSitemaps,
+    amp: config.amp || false,
+    ...(middlewareConfig && { middleware: middlewareConfig }),
+    ...(resolvedRuntime && { runtime: resolvedRuntime }),
+    preferredRegion,
+    extraConfig,
   }
 }
