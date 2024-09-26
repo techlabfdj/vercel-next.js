@@ -1,11 +1,10 @@
-use std::collections::{HashMap, HashSet};
-
 use anyhow::Result;
+use indexmap::{IndexMap, IndexSet};
 use turbo_tasks::{
     graph::{AdjacencyMap, GraphTraversal},
     RcStr, TryJoinIterExt, ValueToString, Vc,
 };
-use turbo_tasks_hash::{hash_xxh3_hash64, DeterministicHash, Xxh3Hash64Hasher};
+use turbo_tasks_hash::hash_xxh3_hash64;
 use turbopack_core::{
     chunk::ModuleId,
     module::{Module, Modules},
@@ -19,7 +18,7 @@ pub struct PreprocessedChildrenIdents {
     // ident.to_string() -> full hash
     // We save the full hash to avoid re-hashing in `merge_preprocessed_module_ids`
     // if this endpoint did not change.
-    modules_idents: HashMap<RcStr, u64>,
+    modules_idents: IndexMap<RcStr, u64>,
 }
 
 #[derive(Clone, Hash)]
@@ -49,7 +48,7 @@ pub struct ReferencedModules(Vec<Vc<ReferencedModule>>);
 async fn referenced_modules(module: Vc<Box<dyn Module>>) -> Result<Vc<ReferencedModules>> {
     let references = module.references().await?;
 
-    let mut set = HashSet::new();
+    let mut set = IndexSet::new();
     let modules_and_async_loaders: ModulesAndAsyncLoaders = references
         .iter()
         .map(|reference| async move {
@@ -134,7 +133,7 @@ pub async fn children_modules_idents(
         .into_reverse_topological();
 
     // module_id -> full hash
-    let mut modules_idents = HashMap::new();
+    let mut modules_idents = IndexMap::new();
     for child_module in children_modules_iter {
         match *child_module.await? {
             ReferencedModule::Module(module) => {
@@ -170,11 +169,11 @@ const JS_MAX_SAFE_INTEGER: u64 = (1u64 << 53) - 1;
 // ids and another that generates the final, optimized module ids. Thoughts?
 pub async fn merge_preprocessed_module_ids(
     preprocessed_module_ids: Vec<Vc<PreprocessedChildrenIdents>>,
-) -> Result<HashMap<RcStr, Vc<ModuleId>>> {
-    let mut merged_module_ids = HashMap::new();
+) -> Result<IndexMap<RcStr, ModuleId>> {
+    let mut merged_module_ids = IndexMap::new();
 
     for preprocessed_module_ids in preprocessed_module_ids {
-        for (module_ident, full_hash) in preprocessed_module_ids.await?.modules_idents.iter() {
+        for (module_ident, full_hash) in &preprocessed_module_ids.await?.modules_idents {
             merged_module_ids.insert(module_ident.clone(), *full_hash);
         }
     }
@@ -182,27 +181,31 @@ pub async fn merge_preprocessed_module_ids(
     // 5% fill rate, as done in Webpack
     // https://github.com/webpack/webpack/blob/27cf3e59f5f289dfc4d76b7a1df2edbc4e651589/lib/ids/IdHelpers.js#L366-L405
     let optimal_range = merged_module_ids.len() * 20;
-    let power = std::cmp::min(
+    let digit_mask = std::cmp::min(
         10u64.pow((optimal_range as f64).log10().ceil() as u32),
         JS_MAX_SAFE_INTEGER,
     );
 
-    let mut module_id_map: HashMap<RcStr, Vc<ModuleId>> = HashMap::new();
-    let mut used_ids: HashSet<u64> = HashSet::new();
+    let mut module_id_map = IndexMap::new();
+    let mut used_ids: IndexSet<u64> = IndexSet::new();
 
     for (module_ident, full_hash) in merged_module_ids.iter() {
-        let mut trimmed_hash = full_hash % power;
+        let mut trimmed_hash = full_hash % digit_mask;
         let mut i = 0;
         while used_ids.contains(&trimmed_hash) {
-            let mut hasher = Xxh3Hash64Hasher::new();
-            module_ident.deterministic_hash(&mut hasher);
-            i.deterministic_hash(&mut hasher);
-            let full_hash = hasher.finish();
-            trimmed_hash = full_hash % power;
+            // If the id is already used, continue rehashing with a counter to find another
+            // available id.
+            let full_hash = {
+                let mut hasher = Xxh3Hash64Hasher::new();
+                module_ident.deterministic_hash(&mut hasher);
+                i.deterministic_hash(&mut hasher);
+                hasher.finish()
+            };
+            trimmed_hash = full_hash % digit_mask;
             i += 1;
         }
         used_ids.insert(trimmed_hash);
-        module_id_map.insert(module_ident.clone(), ModuleId::Number(trimmed_hash).cell());
+        module_id_map.insert(module_ident.clone(), ModuleId::Number(trimmed_hash));
     }
 
     Ok(module_id_map)
