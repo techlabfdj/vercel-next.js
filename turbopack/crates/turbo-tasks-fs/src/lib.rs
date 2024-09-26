@@ -272,7 +272,8 @@ impl DiskFileSystem {
     }
 
     pub fn invalidate(&self) {
-        let span = tracing::info_span!("invalidate filesystem", path = &*self.root).entered();
+        let _span = tracing::info_span!("invalidate filesystem", path = &*self.root).entered();
+        let span = tracing::Span::current();
         let invalidator_map = take(&mut *self.invalidator_map.lock().unwrap());
         let dir_invalidator_map = take(&mut *self.dir_invalidator_map.lock().unwrap());
         let iter = invalidator_map
@@ -287,7 +288,8 @@ impl DiskFileSystem {
     }
 
     pub fn invalidate_with_reason(&self) {
-        let span = tracing::info_span!("invalidate filesystem", path = &*self.root).entered();
+        let _span = tracing::info_span!("invalidate filesystem", path = &*self.root).entered();
+        let span = tracing::Span::current();
         let invalidator_map = take(&mut *self.invalidator_map.lock().unwrap());
         let dir_invalidator_map = take(&mut *self.dir_invalidator_map.lock().unwrap());
         let iter = invalidator_map
