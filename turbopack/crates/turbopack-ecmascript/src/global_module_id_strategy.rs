@@ -191,18 +191,9 @@ pub async fn merge_preprocessed_module_ids(
 
     for (module_ident, full_hash) in merged_module_ids.iter() {
         let mut trimmed_hash = full_hash % digit_mask;
-        let mut i = 0;
         while used_ids.contains(&trimmed_hash) {
-            // If the id is already used, continue rehashing with a counter to find another
-            // available id.
-            let full_hash = {
-                let mut hasher = Xxh3Hash64Hasher::new();
-                module_ident.deterministic_hash(&mut hasher);
-                i.deterministic_hash(&mut hasher);
-                hasher.finish()
-            };
-            trimmed_hash = full_hash % digit_mask;
-            i += 1;
+            // If the id is already used, seek to find another available id.
+            trimmed_hash = (trimmed_hash + 1) % digit_mask;
         }
         used_ids.insert(trimmed_hash);
         module_id_map.insert(module_ident.clone(), ModuleId::Number(trimmed_hash));
