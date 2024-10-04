@@ -6,12 +6,6 @@ use std::{
 
 pub struct PtrEqArc<T>(Arc<T>);
 
-impl<T> PtrEqArc<T> {
-    pub fn new(value: T) -> Self {
-        Self(Arc::new(value))
-    }
-}
-
 impl<T> From<Arc<T>> for PtrEqArc<T> {
     fn from(value: Arc<T>) -> Self {
         Self(value)

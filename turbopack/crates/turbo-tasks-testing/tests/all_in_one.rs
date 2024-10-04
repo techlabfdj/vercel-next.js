@@ -1,4 +1,5 @@
 #![feature(arbitrary_self_types)]
+#![feature(arbitrary_self_types_pointers)]
 
 use anyhow::{anyhow, bail, Result};
 use turbo_tasks::{RcStr, Value, ValueToString, Vc};

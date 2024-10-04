@@ -156,23 +156,6 @@ where
     }
 }
 
-impl<T: KeyValuePair + Default> InnerStorage<T>
-where
-    T::Key: Indexed,
-    T::Value: PartialEq,
-{
-    pub fn has(&self, item: &mut T) -> bool {
-        let (key, value) = take(item).into_key_and_value();
-        let result = if let Some(stored_value) = self.get(&key) {
-            *stored_value == value
-        } else {
-            false
-        };
-        *item = T::from_key_and_value(key, value);
-        result
-    }
-}
-
 pub struct Storage<K, T: KeyValuePair>
 where
     T::Key: Indexed,
@@ -229,7 +212,7 @@ where
     inner: RefMut<'a, K, InnerStorage<T>, BuildHasherDefault<FxHasher>>,
 }
 
-impl<'a, K, T> Deref for StorageWriteGuard<'a, K, T>
+impl<K, T> Deref for StorageWriteGuard<'_, K, T>
 where
     T: KeyValuePair,
     T::Key: Indexed,
@@ -242,7 +225,7 @@ where
     }
 }
 
-impl<'a, K, T> DerefMut for StorageWriteGuard<'a, K, T>
+impl<K, T> DerefMut for StorageWriteGuard<'_, K, T>
 where
     T: KeyValuePair,
     T::Key: Indexed,

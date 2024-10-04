@@ -492,7 +492,10 @@ impl AggregationNodeGuard for NodeGuard {
 }
 
 impl<'a> AggregationContext for NodeAggregationContext<'a> {
-    type Guard<'l> = NodeGuard where Self: 'l;
+    type Guard<'l>
+        = NodeGuard
+    where
+        Self: 'l;
     type Data = Aggregated;
     type NodeRef = NodeRef;
     type DataChange = Change;

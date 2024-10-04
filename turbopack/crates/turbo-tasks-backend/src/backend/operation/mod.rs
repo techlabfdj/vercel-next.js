@@ -5,10 +5,7 @@ mod invalidate;
 mod update_cell;
 mod update_output;
 
-use std::{
-    fmt::{Debug, Formatter},
-    mem::take,
-};
+use std::fmt::{Debug, Formatter};
 
 use serde::{Deserialize, Serialize};
 use turbo_tasks::{KeyValuePair, TaskId, TurboTasksBackendApi};
@@ -106,27 +103,6 @@ impl<'a> ExecuteContext<'a> {
             self.backend.operation_suspend_point(|| op.clone().into());
         }
     }
-
-    pub fn suspending_requested(&self) -> bool {
-        self.backend.suspending_requested()
-    }
-
-    pub fn run_operation(
-        &self,
-        parent_op_ref: &mut impl Operation,
-        run: impl FnOnce(ExecuteContext<'_>),
-    ) {
-        let parent_op = take(parent_op_ref);
-        let parent_op: AnyOperation = parent_op.into();
-        let inner_ctx = ExecuteContext {
-            backend: self.backend,
-            turbo_tasks: self.turbo_tasks,
-            _operation_guard: None,
-            parent: Some((&parent_op, self)),
-        };
-        run(inner_ctx);
-        *parent_op_ref = parent_op.try_into().unwrap();
-    }
 }
 
 pub struct TaskGuard<'a> {
@@ -135,7 +111,7 @@ pub struct TaskGuard<'a> {
     backend: &'a TurboTasksBackend,
 }
 
-impl<'a> Debug for TaskGuard<'a> {
+impl Debug for TaskGuard<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut d = f.debug_struct("TaskGuard");
         d.field("task_id", &self.task_id);
@@ -149,7 +125,7 @@ impl<'a> Debug for TaskGuard<'a> {
     }
 }
 
-impl<'a> TaskGuard<'a> {
+impl TaskGuard<'_> {
     pub fn id(&self) -> TaskId {
         self.task_id
     }

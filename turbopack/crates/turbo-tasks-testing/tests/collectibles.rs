@@ -1,4 +1,5 @@
 #![feature(arbitrary_self_types)]
+#![feature(arbitrary_self_types_pointers)]
 
 use std::{collections::HashSet, time::Duration};
 
