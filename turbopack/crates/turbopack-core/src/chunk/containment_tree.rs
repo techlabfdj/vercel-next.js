@@ -210,6 +210,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::needless_return)] // clippy bug causes false positive
     use async_trait::async_trait;
 
     use super::*;

@@ -7,6 +7,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(arbitrary_self_types_pointers)]
 #![allow(clippy::mutable_key_type)]
+#![allow(clippy::needless_return)] // clippy false positive
 
 pub mod attach;
 pub mod embed;

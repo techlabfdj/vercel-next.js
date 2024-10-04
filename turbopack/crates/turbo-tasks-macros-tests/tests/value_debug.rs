@@ -1,3 +1,5 @@
+#![allow(clippy::needless_return)] // clippy bug causes false positive
+
 use turbo_tasks::debug::ValueDebugFormat;
 use turbo_tasks_testing::{register, run, Registration};
 

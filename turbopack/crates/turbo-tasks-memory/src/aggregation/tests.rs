@@ -491,7 +491,7 @@ impl AggregationNodeGuard for NodeGuard {
     }
 }
 
-impl<'a> AggregationContext for NodeAggregationContext<'a> {
+impl AggregationContext for NodeAggregationContext<'_> {
     type Guard<'l>
         = NodeGuard
     where

@@ -1,3 +1,4 @@
+#![allow(clippy::needless_return)] // clippy bug causes false positive
 #![cfg(test)]
 
 mod util;

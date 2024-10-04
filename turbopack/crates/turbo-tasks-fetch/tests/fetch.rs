@@ -1,4 +1,5 @@
 #![cfg(test)]
+#![allow(clippy::needless_return)] // clippy bug causes false positive
 
 use turbo_tasks::Vc;
 use turbo_tasks_fetch::{fetch, FetchErrorKind};

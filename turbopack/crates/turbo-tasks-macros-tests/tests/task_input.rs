@@ -1,6 +1,7 @@
 //! Tests for the `#[derive(TaskInput)]` macro are in `turbo_tasks` itself.
 //! However, we keep one test here as an integration test between the derive
 //! macro and the `#[turbo_tasks::function]` macro.
+#![allow(clippy::needless_return)] // clippy bug causes false positive
 
 use serde::{Deserialize, Serialize};
 use turbo_tasks::{Completion, ReadRef, TaskInput, Vc};

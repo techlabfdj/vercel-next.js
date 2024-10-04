@@ -145,6 +145,7 @@ impl ExitReceiver {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::needless_return)] // clippy bug causes false positive
     use std::{
         future::Future,
         pin::Pin,
