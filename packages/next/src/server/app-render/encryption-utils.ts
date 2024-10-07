@@ -86,43 +86,40 @@ export function setReferenceManifestsSingleton({
   }
 }
 
+export function unsetReferenceManifestsSingleton() {
+  // @ts-ignore
+  delete globalThis[SERVER_ACTION_MANIFESTS_SINGLETON]
+}
+
 export function getServerModuleMap() {
   const serverActionsManifestSingleton = (globalThis as any)[
     SERVER_ACTION_MANIFESTS_SINGLETON
-  ] as {
-    serverModuleMap: {
-      [id: string]: {
-        id: string
-        chunks: string[]
-        name: string
+  ] as
+    | {
+        serverModuleMap: {
+          [id: string]: {
+            id: string
+            chunks: string[]
+            name: string
+          }
+        }
       }
-    }
-  }
+    | undefined
 
-  if (!serverActionsManifestSingleton) {
-    throw new Error(
-      'Missing manifest for Server Actions. This is a bug in Next.js'
-    )
-  }
-
-  return serverActionsManifestSingleton.serverModuleMap
+  return serverActionsManifestSingleton?.serverModuleMap
 }
 
 export function getClientReferenceManifestSingleton() {
   const serverActionsManifestSingleton = (globalThis as any)[
     SERVER_ACTION_MANIFESTS_SINGLETON
-  ] as {
-    clientReferenceManifest: DeepReadonly<ClientReferenceManifest>
-    serverActionsManifest: DeepReadonly<ActionManifest>
-  }
+  ] as
+    | {
+        clientReferenceManifest: DeepReadonly<ClientReferenceManifest>
+        serverActionsManifest: DeepReadonly<ActionManifest>
+      }
+    | undefined
 
-  if (!serverActionsManifestSingleton) {
-    throw new Error(
-      'Missing manifest for Server Actions. This is a bug in Next.js'
-    )
-  }
-
-  return serverActionsManifestSingleton.clientReferenceManifest
+  return serverActionsManifestSingleton?.clientReferenceManifest
 }
 
 export async function getActionEncryptionKey() {
@@ -132,10 +129,12 @@ export async function getActionEncryptionKey() {
 
   const serverActionsManifestSingleton = (globalThis as any)[
     SERVER_ACTION_MANIFESTS_SINGLETON
-  ] as {
-    clientReferenceManifest: DeepReadonly<ClientReferenceManifest>
-    serverActionsManifest: DeepReadonly<ActionManifest>
-  }
+  ] as
+    | {
+        clientReferenceManifest: DeepReadonly<ClientReferenceManifest>
+        serverActionsManifest: DeepReadonly<ActionManifest>
+      }
+    | undefined
 
   if (!serverActionsManifestSingleton) {
     throw new Error(

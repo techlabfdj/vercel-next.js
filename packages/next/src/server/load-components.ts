@@ -28,7 +28,10 @@ import { getTracer } from './lib/trace/tracer'
 import { LoadComponentsSpan } from './lib/trace/constants'
 import { evalManifest, loadManifest } from './load-manifest'
 import { wait } from '../lib/wait'
-import { setReferenceManifestsSingleton } from './app-render/encryption-utils'
+import {
+  setReferenceManifestsSingleton,
+  unsetReferenceManifestsSingleton,
+} from './app-render/encryption-utils'
 import { createServerModuleMap } from './app-render/action-utils'
 import type { DeepReadonly } from '../shared/lib/deep-readonly'
 
@@ -185,6 +188,9 @@ async function loadComponentsImpl<N = any>({
         pageName: page,
       }),
     })
+  } else {
+    // Otherwise we need to make sure to unset previously set manifests.
+    unsetReferenceManifestsSingleton()
   }
 
   const ComponentMod = await requirePage(page, distDir, isAppPath)

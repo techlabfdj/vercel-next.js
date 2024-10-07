@@ -77,7 +77,7 @@ cacheHandlerMap.set('default', {
 
 function generateCacheEntry(
   workStore: WorkStore,
-  clientReferenceManifest: DeepReadonly<ClientReferenceManifest>,
+  clientReferenceManifest: DeepReadonly<ClientReferenceManifest> | undefined,
   cacheHandler: CacheHandler,
   serializedCacheKey: string | ArrayBuffer,
   encodedArguments: FormData | string,
@@ -101,7 +101,7 @@ function generateCacheEntry(
 
 function generateCacheEntryWithRestoredWorkStore(
   workStore: WorkStore,
-  clientReferenceManifest: DeepReadonly<ClientReferenceManifest>,
+  clientReferenceManifest: DeepReadonly<ClientReferenceManifest> | undefined,
   cacheHandler: CacheHandler,
   serializedCacheKey: string | ArrayBuffer,
   encodedArguments: FormData | string,
@@ -128,7 +128,7 @@ function generateCacheEntryWithRestoredWorkStore(
 
 function generateCacheEntryWithCacheContext(
   workStore: WorkStore,
-  clientReferenceManifest: DeepReadonly<ClientReferenceManifest>,
+  clientReferenceManifest: DeepReadonly<ClientReferenceManifest> | undefined,
   cacheHandler: CacheHandler,
   serializedCacheKey: string | ArrayBuffer,
   encodedArguments: FormData | string,
@@ -150,7 +150,7 @@ function generateCacheEntryWithCacheContext(
 
 async function generateCacheEntryImpl(
   workStore: WorkStore,
-  clientReferenceManifest: DeepReadonly<ClientReferenceManifest>,
+  clientReferenceManifest: DeepReadonly<ClientReferenceManifest> | undefined,
   cacheHandler: CacheHandler,
   serializedCacheKey: string | ArrayBuffer,
   encodedArguments: FormData | string,
@@ -160,7 +160,7 @@ async function generateCacheEntryImpl(
 
   const [, , args] = await decodeReply<any[]>(
     encodedArguments,
-    getServerModuleMap(),
+    getServerModuleMap() ?? {},
     {
       temporaryReferences,
     }
@@ -174,7 +174,7 @@ async function generateCacheEntryImpl(
 
   const stream = renderToReadableStream(
     result,
-    clientReferenceManifest.clientModules,
+    clientReferenceManifest ? clientReferenceManifest.clientModules : null,
     {
       environmentName: 'Cache',
       temporaryReferences,
@@ -285,6 +285,16 @@ export function cache(kind: string, id: string, fn: any) {
       const clientReferenceManifestSingleton =
         getClientReferenceManifestSingleton()
 
+      if (
+        // Route handlers don't need a client reference manifest.
+        workStore.page.endsWith('/page') &&
+        !clientReferenceManifestSingleton
+      ) {
+        throw new Error(
+          'Missing manifest for "use cache". This is a bug in Next.js'
+        )
+      }
+
       let stream
       if (
         entry === undefined ||
@@ -341,10 +351,13 @@ export function cache(kind: string, id: string, fn: any) {
         // to be added to the consumer. Instead, we'll wait for any ClientReference to be emitted
         // which themselves will handle the preloading.
         moduleLoading: null,
-        moduleMap: isEdgeRuntime
-          ? clientReferenceManifestSingleton.edgeRscModuleMapping
-          : clientReferenceManifestSingleton.rscModuleMapping,
+        moduleMap: clientReferenceManifestSingleton
+          ? isEdgeRuntime
+            ? clientReferenceManifestSingleton.edgeRscModuleMapping
+            : clientReferenceManifestSingleton.rscModuleMapping
+          : null,
       }
+
       return createFromReadableStream(stream, {
         ssrManifest,
         temporaryReferences,

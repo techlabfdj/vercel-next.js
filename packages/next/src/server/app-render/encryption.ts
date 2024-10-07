@@ -78,6 +78,12 @@ async function encodeActionBoundArg(actionId: string, arg: string) {
 export async function encryptActionBoundArgs(actionId: string, args: any[]) {
   const clientReferenceManifestSingleton = getClientReferenceManifestSingleton()
 
+  if (!clientReferenceManifestSingleton) {
+    throw new Error(
+      'Missing manifest for Server Actions. This is a bug in Next.js'
+    )
+  }
+
   // Using Flight to serialize the args into a string.
   const serialized = await streamToString(
     renderToReadableStream(args, clientReferenceManifestSingleton.clientModules)
@@ -97,6 +103,12 @@ export async function decryptActionBoundArgs(
   encrypted: Promise<string>
 ) {
   const clientReferenceManifestSingleton = getClientReferenceManifestSingleton()
+
+  if (!clientReferenceManifestSingleton) {
+    throw new Error(
+      'Missing manifest for Server Actions. This is a bug in Next.js'
+    )
+  }
 
   // Decrypt the serialized string with the action id as the salt.
   const decryped = await decodeActionBoundArg(actionId, await encrypted)
@@ -124,6 +136,13 @@ export async function decryptActionBoundArgs(
 
   // This extra step ensures that the server references are recovered.
   const serverModuleMap = getServerModuleMap()
+
+  if (!serverModuleMap) {
+    throw new Error(
+      'Missing manifest for Server Actions. This is a bug in Next.js'
+    )
+  }
+
   const transformed = await decodeReply(
     await encodeReply(deserialized),
     serverModuleMap

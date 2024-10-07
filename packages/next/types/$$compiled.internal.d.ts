@@ -45,7 +45,7 @@ declare module 'react-server-dom-webpack/server.edge' {
         readonly name: string
         readonly async?: boolean
       }
-    },
+    } | null,
     options?: {
       temporaryReferences?: string
       environmentName?: string

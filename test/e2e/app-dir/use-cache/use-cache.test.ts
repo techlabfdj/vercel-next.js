@@ -11,6 +11,17 @@ describe('use-cache', () => {
 
   const itSkipTurbopack = isTurbopack ? it.skip : it
 
+  // Running this test first, to avoid the client manifest leaking into
+  // `globalThis` if a page is compiled before the route handler. This would
+  // have previously led to a false-positive result for this test (before we
+  // called `unsetReferenceManifestsSingleton`).
+  itSkipTurbopack('should cache results in route handlers', async () => {
+    const response = await next.fetch('/api')
+    const { rand1, rand2 } = await response.json()
+
+    expect(rand1).toEqual(rand2)
+  })
+
   // TODO: Fix the following error with Turbopack:
   // Error: Module [project]/app/client.tsx [app-client] (ecmascript) was
   // instantiated because it was required from module...
