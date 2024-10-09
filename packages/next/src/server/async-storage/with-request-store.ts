@@ -18,6 +18,7 @@ import {
 import {
   MutableRequestCookiesAdapter,
   RequestCookiesAdapter,
+  responseCookiesToRequestCookies,
   type ReadonlyRequestCookies,
 } from '../web/spec-extension/adapters/request-cookies'
 import { ResponseCookies, RequestCookies } from '../web/spec-extension/cookies'
@@ -167,6 +168,9 @@ export const withRequestStore: WithStore<WorkUnitStore, RequestContext> = <
 
       return cache.cookies
     },
+    set cookies(value: ReadonlyRequestCookies) {
+      cache.cookies = value
+    },
     get mutableCookies() {
       if (!cache.mutableCookies) {
         const mutableCookies = getMutableCookies(
@@ -201,4 +205,11 @@ export const withRequestStore: WithStore<WorkUnitStore, RequestContext> = <
   }
 
   return storage.run(store, callback, store)
+}
+
+export function synchronizeMutableCookies(store: RequestStore) {
+  // TODO: does this need to update headers as well?
+  store.cookies = RequestCookiesAdapter.seal(
+    responseCookiesToRequestCookies(store.mutableCookies)
+  )
 }
