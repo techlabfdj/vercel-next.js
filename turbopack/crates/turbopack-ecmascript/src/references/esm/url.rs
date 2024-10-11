@@ -206,7 +206,7 @@ impl CodeGenerateable for UrlAssetReference {
                             request
                         )
                     }
-                    ReferencedAsset::None => {}
+                    ReferencedAsset::None | ReferencedAsset::Unresolveable => {}
                 }
             }
             UrlRewriteBehavior::Full => {
@@ -294,7 +294,7 @@ impl CodeGenerateable for UrlAssetReference {
                             request
                         )
                     }
-                    ReferencedAsset::None => {}
+                    ReferencedAsset::None | ReferencedAsset::Unresolveable => {}
                 }
             }
             UrlRewriteBehavior::None => {

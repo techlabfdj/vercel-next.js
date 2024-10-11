@@ -68,7 +68,6 @@ pub enum ModuleResolveResultItem {
     Error(Vc<RcStr>),
     Empty,
     Custom(u8),
-    Unresolveable,
 }
 
 #[turbo_tasks::value(shared)]
@@ -396,7 +395,6 @@ pub enum ResolveResultItem {
     Error(Vc<RcStr>),
     Empty,
     Custom(u8),
-    Unresolveable,
 }
 
 /// Represents the key for a request that leads to a certain results during
@@ -485,9 +483,6 @@ impl ValueToString for ResolveResult {
                 }
                 ResolveResultItem::Custom(_) => {
                     result.push_str("custom");
-                }
-                ResolveResultItem::Unresolveable => {
-                    result.push_str("unresolveable");
                 }
             }
             result.push('\n');
@@ -672,9 +667,6 @@ impl ResolveResult {
                                 ResolveResultItem::Error(e) => ModuleResolveResultItem::Error(e),
                                 ResolveResultItem::Custom(u8) => {
                                     ModuleResolveResultItem::Custom(u8)
-                                }
-                                ResolveResultItem::Unresolveable => {
-                                    ModuleResolveResultItem::Unresolveable
                                 }
                             },
                         ))
