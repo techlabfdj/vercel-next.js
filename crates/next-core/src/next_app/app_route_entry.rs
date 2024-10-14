@@ -113,7 +113,7 @@ pub async fn get_app_route_entry(
             Vc::upcast(module_asset_context),
             project_root,
             rsc_entry,
-            pathname.clone(),
+            page,
         );
     }
 
@@ -131,7 +131,7 @@ async fn wrap_edge_route(
     asset_context: Vc<Box<dyn AssetContext>>,
     project_root: Vc<FileSystemPath>,
     entry: Vc<Box<dyn Module>>,
-    pathname: RcStr,
+    page: AppPage,
 ) -> Result<Vc<Box<dyn Module>>> {
     const INNER: &str = "INNER_ROUTE_ENTRY";
 
@@ -140,6 +140,7 @@ async fn wrap_edge_route(
         project_root,
         indexmap! {
             "VAR_USERLAND" => INNER.into(),
+            "VAR_PAGE" => page.to_string().into(),
         },
         indexmap! {},
         indexmap! {},
@@ -161,6 +162,6 @@ async fn wrap_edge_route(
         asset_context,
         project_root,
         wrapped,
-        pathname,
+        AppPath::from(page).to_string().into(),
     ))
 }
