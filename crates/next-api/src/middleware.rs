@@ -138,8 +138,10 @@ impl MiddlewareEndpoint {
         let wasm_paths_from_root =
             get_wasm_paths_from_root(&node_root_value, &all_output_assets).await?;
 
-        let all_assets =
-            get_paths_from_root(&node_root_value, &all_output_assets, |_asset| true).await?;
+        let all_assets = get_paths_from_root(&node_root_value, &all_output_assets, |asset| {
+            !asset.ends_with(".js") && !asset.ends_with(".map") && !asset.ends_with(".wasm")
+        })
+        .await?;
 
         // Awaited later for parallelism
         let config = config.await?;
