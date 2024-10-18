@@ -1,4 +1,5 @@
 import React from 'react'
+import isError from '../../../../../lib/is-error'
 
 const captureOwnerStack = process.env.__NEXT_REACT_OWNER_STACK
   ? (React as any).captureOwnerStack
@@ -9,12 +10,12 @@ const REACT_ERROR_STACK_BOTTOM_FRAME_REGEX = new RegExp(
   `(at ${REACT_ERROR_STACK_BOTTOM_FRAME} )|(${REACT_ERROR_STACK_BOTTOM_FRAME}\\@)`
 )
 
-export function getReactStitchedError<T = unknown>(err: T): Error {
+export function getReactStitchedError<T = unknown>(err: T): Error | T {
   if (!process.env.__NEXT_REACT_OWNER_STACK) {
-    return err as any
+    return err
   }
 
-  const isErrorInstance = err instanceof Error
+  const isErrorInstance = isError(err)
   const originStack = isErrorInstance ? err.stack || '' : ''
   const originMessage = isErrorInstance ? err.message : ''
   const stackLines = originStack.split('\n')

@@ -1,6 +1,7 @@
 import { nextTestSetup } from 'e2e-utils'
 import { assertHasRedbox, assertNoRedbox } from 'next-test-utils'
 
+// TODO: parse the location and assert them in the future
 // Remove the location `()` part in every line of stack trace;
 // Remove the leading spaces in every line of stack trace;
 // Remove the trailing spaces in every line of stack trace;

@@ -42,7 +42,12 @@ export const onCaughtError: HydrationOptions['onCaughtError'] = (
     }
 
     // Create error location with errored component and error boundary, to match the behavior of default React onCaughtError handler.
-    const errorLocation = `The above error occurred in the <${componentThatErroredName}> component. It was handled by the <${errorBoundaryName}> error boundary.`
+    const errorBoundaryMessage = `It was handled by the <${errorBoundaryName}> error boundary.`
+    const componentErrorMessage = componentThatErroredName
+      ? `The above error occurred in the <${componentThatErroredName}> component.`
+      : `The above error occurred in one of your components.`
+
+    const errorLocation = `${componentErrorMessage} ${errorBoundaryMessage}`
 
     const originErrorStack = isError(err) ? err.stack || '' : ''
 
@@ -77,9 +82,12 @@ export const onUncaughtError: HydrationOptions['onUncaughtError'] = (
     }
 
     // Create error location with errored component and error boundary, to match the behavior of default React onCaughtError handler.
-    const errorLocation = `The above error occurred in the <${componentThatErroredName}> component.`
+    const errorLocation = componentThatErroredName
+      ? `The above error occurred in the <${componentThatErroredName}> component.`
+      : `The above error occurred in one of your components.`
 
-    originConsoleError(stitchedError.stack + '\n\n' + errorLocation)
+    const errStack = (stitchedError as any).stack || ''
+    originConsoleError(errStack + '\n\n' + errorLocation)
     // Always log the modified error instance so the console.error interception side can pick it up easily without constructing an error again.
     reportGlobalError(stitchedError)
   } else {

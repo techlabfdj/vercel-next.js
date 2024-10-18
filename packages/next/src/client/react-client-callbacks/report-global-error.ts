@@ -3,6 +3,6 @@ export const reportGlobalError =
     ? // In modern browsers, reportError will dispatch an error event,
       // emulating an uncaught JavaScript error.
       reportError
-    : (error: any) => {
+    : (error: unknown) => {
         window.console.error(error)
       }
