@@ -57,7 +57,11 @@ describe('stitching errors', () => {
     } else {
       expect(stackFramesContent).toMatchInlineSnapshot(`
         "useThrowError @ app/browser/uncaught/page.js 
-        useErrorHook @ app/browser/uncaught/page.js"
+        useErrorHook @ app/browser/uncaught/page.js 
+        ReactDevOverlay @ ../src/client/components/react-dev-overlay/app/hot-reloader-client.tsx 
+        assetPrefix @ ../src/client/components/app-router.tsx 
+        actionQueue @ ../src/client/components/app-router.tsx 
+        AppRouter @ ../src/client/app-index.tsx"
       `)
     }
 
@@ -68,10 +72,7 @@ describe('stitching errors', () => {
 
     if (process.env.TURBOPACK) {
       expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
-        "%o
-        %s
-        %s
-        Error: browser error
+        "Error: browser error
         at useThrowError 
         at useErrorHook 
         at Page 
@@ -85,14 +86,12 @@ describe('stitching errors', () => {
         at renderRootSync 
         at performWorkOnRoot 
         at performWorkOnRootViaSchedulerTask 
-        at MessagePort.performWorkUntilDeadline  The above error occurred in the <NotFoundErrorBoundary> component. React will try to recreate this component tree from scratch using the error boundary you provided, ReactDevOverlay."
+        at MessagePort.performWorkUntilDeadline 
+        The above error occurred in the <Page> component. It was handled by the <ReactDevOverlay> error boundary."
       `)
     } else {
       expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
-        "%o
-        %s
-        %s
-        Error: browser error
+        "Error: browser error
         at useThrowError 
         at useErrorHook 
         at Page 
@@ -106,7 +105,8 @@ describe('stitching errors', () => {
         at renderRootSync 
         at performWorkOnRoot 
         at performWorkOnRootViaSchedulerTask 
-        at MessagePort.performWorkUntilDeadline  The above error occurred in the <NotFoundErrorBoundary> component. React will try to recreate this component tree from scratch using the error boundary you provided, ReactDevOverlay."
+        at MessagePort.performWorkUntilDeadline 
+        The above error occurred in the <Page> component. It was handled by the <ReactDevOverlay> error boundary."
       `)
     }
   })
@@ -122,10 +122,7 @@ describe('stitching errors', () => {
     }).message
 
     expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
-      "%o
-      %s
-      %s
-      Error: browser error
+      "Error: browser error
       at useThrowError 
       at useErrorHook 
       at Thrower 
@@ -139,7 +136,8 @@ describe('stitching errors', () => {
       at renderRootSync 
       at performWorkOnRoot 
       at performWorkOnRootViaSchedulerTask 
-      at MessagePort.performWorkUntilDeadline  The above error occurred in the <Thrower> component. React will try to recreate this component tree from scratch using the error boundary you provided, MyErrorBoundary."
+      at MessagePort.performWorkUntilDeadline 
+      The above error occurred in the <Thrower> component. It was handled by the <MyErrorBoundary> error boundary."
     `)
   })
 
@@ -157,7 +155,11 @@ describe('stitching errors', () => {
     } else {
       expect(stackFramesContent).toMatchInlineSnapshot(`
         "useThrowError @ app/ssr/page.js 
-        useErrorHook @ app/ssr/page.js"
+        useErrorHook @ app/ssr/page.js 
+        ReactDevOverlay @ ../src/client/components/react-dev-overlay/app/hot-reloader-client.tsx 
+        assetPrefix @ ../src/client/components/app-router.tsx 
+        actionQueue @ ../src/client/components/app-router.tsx 
+        AppRouter @ ../src/client/app-index.tsx"
       `)
     }
 
@@ -167,10 +169,7 @@ describe('stitching errors', () => {
     }).message
 
     expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
-      "%o
-      %s
-      %s
-      Error: ssr error
+      "Error: ssr error
       at useThrowError 
       at useErrorHook 
       at Page 
@@ -184,7 +183,8 @@ describe('stitching errors', () => {
       at renderRootSync 
       at performWorkOnRoot 
       at performWorkOnRootViaSchedulerTask 
-      at MessagePort.performWorkUntilDeadline  The above error occurred in the <NotFoundErrorBoundary> component. React will try to recreate this component tree from scratch using the error boundary you provided, ReactDevOverlay."
+      at MessagePort.performWorkUntilDeadline 
+      The above error occurred in the <Page> component. It was handled by the <ReactDevOverlay> error boundary."
     `)
   })
 })
