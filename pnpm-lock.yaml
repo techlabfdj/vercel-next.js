@@ -869,7 +869,7 @@ importers:
         version: 0.5.13
       babel-plugin-react-compiler:
         specifier: '*'
-        version: 0.0.0-experimental-fa06e2c-20241016
+        version: 19.0.0-beta-9ee70a1-20241017
       busboy:
         specifier: 1.6.0
         version: 1.6.0
@@ -1544,6 +1544,9 @@ importers:
       semver:
         specifier: 7.6.3
         version: 7.6.3
+      strip-ansi:
+        specifier: 6.0.0
+        version: 6.0.0
     devDependencies:
       '@types/find-up':
         specifier: 4.0.0
@@ -6179,8 +6182,8 @@ packages:
   babel-plugin-react-compiler@0.0.0-experimental-c23de8d-20240515:
     resolution: {integrity: sha512-0XN2gmpT55QtAz5n7d5g91y1AuO9tRhWBaLgCRyc4ExHrlr7+LfxW+YTb3mOwxngkkiggwM8HyYsaEK9MqhnlQ==}
 
-  babel-plugin-react-compiler@0.0.0-experimental-fa06e2c-20241016:
-    resolution: {integrity: sha512-ASXNEtiyWcSnt38qTuu5972o+XYcz5pdkfvtLnhG1fglaQg9pFmfhC5274EH1QXxOFhgDOSd/foZ+H2o/a1noA==}
+  babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017:
+    resolution: {integrity: sha512-AkSce5YYHcreFtuvzI9xnP2kwoYkub8Go3yrz7cPbbCE6oIhFxESbPWJVgye7yZckXuzEZYO4JSE8tq/U0oVfA==}
 
   babel-plugin-transform-async-to-promises@0.8.15:
     resolution: {integrity: sha512-fDXP68ZqcinZO2WCiimCL9zhGjGXOnn3D33zvbh+yheZ/qOrNVVDDIBtAaM3Faz8TRvQzHiRKsu3hfrBAhEncQ==}
@@ -18038,7 +18041,7 @@ snapshots:
       micromatch: 4.0.5
       pretty-format: 29.7.0
       slash: 3.0.0
-      strip-ansi: 6.0.1
+      strip-ansi: 6.0.0
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
@@ -21096,7 +21099,7 @@ snapshots:
       zod: 3.23.8
       zod-validation-error: 2.1.0(zod@3.23.8)
 
-  babel-plugin-react-compiler@0.0.0-experimental-fa06e2c-20241016:
+  babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017:
     dependencies:
       '@babel/generator': 7.2.0
       '@babel/types': 7.22.5
@@ -21670,7 +21673,7 @@ snapshots:
   cliui@7.0.4:
     dependencies:
       string-width: 4.2.3
-      strip-ansi: 6.0.1
+      strip-ansi: 6.0.0
       wrap-ansi: 7.0.0
 
   cliui@8.0.1:
@@ -28004,7 +28007,7 @@ snapshots:
       is-interactive: 1.0.0
       log-symbols: 3.0.0
       mute-stream: 0.0.8
-      strip-ansi: 6.0.1
+      strip-ansi: 6.0.0
       wcwidth: 1.0.1
 
   ora@5.4.1:
@@ -32139,7 +32142,7 @@ snapshots:
     dependencies:
       ansi-styles: 4.3.0
       string-width: 4.2.3
-      strip-ansi: 6.0.1
+      strip-ansi: 6.0.0
 
   wrap-ansi@8.1.0:
     dependencies:
